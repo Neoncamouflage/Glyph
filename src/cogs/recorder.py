@@ -83,18 +83,14 @@ class Recorder(commands.Cog):
         file_start = session.user_sinks[user].fileStart
         base_name, ext = os.path.splitext(current_file)
 
-        # Split the filename to get the different parts
         parts = base_name.split('_')
 
-        # The last part is the number we want to increment
         index = int(parts[-1])
 
-        # Increment the number and create a new filename
         parts[-1] = str(index + 1)
         new_base_name = '_'.join(parts)
         new_filename = f"{new_base_name}{ext}"
 
-        # Stop the current sink and start a new one
         session.user_sinks[user].cleanup()
         session.add_user_sink(user, voice_recv.FFmpegSink(filename=new_filename))
         print(f"Switched to new file: {new_filename}")
@@ -185,23 +181,18 @@ class Recorder(commands.Cog):
             def callback(user, data: voice_recv.VoiceData):
                 if user not in session.user_sinks:
                     print("Found new user")
-                    # Start with a base filename
                     base_filename = f"{session.campaign_id}_{session.session_number}_{user.name}_"
                     index = 1
                     filename = f"{base_filename}{index}.mp3"
 
-                    # Increment the index until we find a filename that doesn't exist
                     while os.path.exists(filename):
                         index += 1
                         filename = f"{base_filename}{index}.mp3"
 
-                    # Create a new sink with the available filename
                     session.add_user_sink(user, voice_recv.FFmpegSink(filename=filename))
 
-                # Write the data to the current file
                 session.user_sinks[user].write(user, data)
 
-            # Start listening to the voice channel
             session.voice_client.listen(voice_recv.BasicSink(callback))
             session.start_recording()
             await interaction.response.send_message("I'm ready!")
@@ -221,7 +212,7 @@ class Recorder(commands.Cog):
             files_to_transcribe = [{'file':sink.filename,'userID':user.id,'start':sink.fileStart} for user,sink in session.user_sinks.items()]
             session.stop_recording()
             print("Stopped recording")
-            #Transcribe files in progress
+
             for each in files_to_transcribe:
                 if os.path.exists(each['file']):
                     await apiClient.transcribe_file(each['file'],each['userID'],session,each['start'])
@@ -242,7 +233,6 @@ class Recorder(commands.Cog):
                 files_to_transcribe = [{'file':sink.filename,'userID':user.id,'start':sink.fileStart} for user,sink in session.user_sinks.items()]
                 session.stop_recording()
                 print("Stopped recording")
-                #Transcribe files in progress
                 for each in files_to_transcribe:
                     if os.path.exists(each['file']):
                         await apiClient.transcribe_file(each['file'],each['userID'],session,each['start'])
@@ -250,7 +240,6 @@ class Recorder(commands.Cog):
             del self.bot.sessions[interaction.guild_id]
             print("Session deleted")
             await session.voice_client.disconnect()
-            #Here is where we will call the notemaking function. All transcriptions done by this stage
             await combine_transcripts(session=session,bot=self.bot)
             notes = await apiClient.generate_notes(session=session)
             await interaction.followup.send("Notes are ready!")
@@ -272,7 +261,7 @@ class Recorder(commands.Cog):
         session = self.bot.sessions.get(interaction.guild_id)
         if session:
             if session.is_recording():
-                await self.stop(interaction)  # Stop recording and disconnect
+                await self.stop(interaction)
             await session.voice_client.disconnect()
             await interaction.response.send_message("Ok bye!")
         else:
@@ -284,7 +273,7 @@ async def combine_transcripts(session=None, guild_id=None, campaign_id=None, ses
     if bot is None:
         print("Need bot!")
         return -1
-    # If a session object is provided, extract its attributes
+
     if session is not None:
         guild_id = getattr(session, 'guild_id', guild_id)
         campaign_id = getattr(session, 'campaign_id', campaign_id)
@@ -292,7 +281,7 @@ async def combine_transcripts(session=None, guild_id=None, campaign_id=None, ses
 
     transcript_file = f'transcripts/{guild_id}_{campaign_id}_{session_number}.json'
     print(f"Working with transcript file {transcript_file}")
-    # Perform checks and operations based on the parameters
+
     if os.path.exists(transcript_file):
         with open(transcript_file, "r") as json_file:
             session_transcripts = json.load(json_file) 
@@ -300,10 +289,8 @@ async def combine_transcripts(session=None, guild_id=None, campaign_id=None, ses
         print(f"No transcripts located for filepath {transcript_file}")
         return -1
 
-    # Initialize an empty list to hold all segments with user IDs
     all_segments = []
 
-    # Combine all segments from all users and include user IDs
     for user_id, user_transcripts in session_transcripts.items():
         for session_segments in user_transcripts:
             for segment in session_segments:
@@ -315,7 +302,6 @@ async def combine_transcripts(session=None, guild_id=None, campaign_id=None, ses
                 }
                 all_segments.append(segment_with_user)
 
-    # Sort the combined list by the 'start_seconds' key
     all_segments_sorted = sorted(all_segments, key=lambda x: x['start_seconds'])
     print("Segments sorted!",all_segments_sorted)
     async with aiofiles.open(f'transcripts/{guild_id}_{campaign_id}_{session_number}_sorted.json', "w") as output_file:

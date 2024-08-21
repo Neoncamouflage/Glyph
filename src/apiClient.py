@@ -113,30 +113,3 @@ async def transcribe_file(file_path,userID,session,fileStart):
     except Exception as e:
         print(f"Error during transcription: {e}")
         return None
-
-#asyncio.run(transcribe_file('5_1_neoncamouflage_1.mp3'))
-
-'''
-
-
-
-async def transcribe_file(file_path, output_dir="transcripts"):
-    print("Here in the main")
-    loop = asyncio.get_event_loop()
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Transcribe the file asynchronously
-    transcript = await loop.run_in_executor(None, transcribe_file_sync, file_path)
-    print("Transfcript here")
-    if transcript is not None:
-        output_filename = os.path.join(output_dir, os.path.basename(file_path).replace(".mp3", "_transcript.txt"))
-        with open(output_filename, "w") as file:
-            file.write(transcript['text'])
-        
-        print(f"Transcription complete for {file_path}, written to {output_filename}")
-    else:
-        print(f"Failed to transcribe {file_path}")
-
-    return transcript'''
