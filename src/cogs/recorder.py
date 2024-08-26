@@ -243,14 +243,18 @@ class Recorder(commands.Cog):
             await combine_transcripts(session=session,bot=self.bot)
             notes = await apiClient.generate_notes(session=session)
             await interaction.followup.send("Notes are ready!")
-            if len(notes) <= MAX_MESSAGE_LENGTH:
-                print("Notes too long")
-                await interaction.followup.send(notes)
-            else:
-                note_path = f'notes/{session.guild_id}_{session.campaign_id}_{session.session_number}_summary.txt'
-                print(f"Notes not too long, note filepath is {note_path}")
-                await interaction.followup.send(content="The notes were too long to display in a message, so I've uploaded them as a file instead.",
-                                            file=discord.File(note_path))
+            try:
+                if len(notes) <= MAX_MESSAGE_LENGTH:
+                    print("Notes not too long")
+                    await interaction.followup.send(notes)
+                else:
+                    note_path = f'notes/{session.guild_id}_{session.campaign_id}_{session.session_number}_summary.txt'
+                    print(f"Notes too long, note filepath is {note_path}")
+                    await interaction.followup.send(content="Too many notes to type! I put them in a file for you.",
+                                                file=discord.File(note_path))
+            except Exception as e:
+                    print(f"Failed to send notes: {e}")
+                    return
         else:
             await interaction.response.send_message("I don't have anything to wrap up but alrighty.")
         print("Done command finished")
@@ -290,12 +294,35 @@ async def combine_transcripts(session=None, guild_id=None, campaign_id=None, ses
         return -1
 
     all_segments = []
-
+    nameRef = {}
+    async with bot.db.acquire() as conn:
+            async with conn.cursor() as cursor:
+                try:
+                    await cursor.execute(
+                        "SELECT gm_id FROM campaigns WHERE campaign_id = ?",
+                        (campaign_id,)
+                    )
+                    gm_entry = await cursor.fetchone()
+                    if gm_entry:
+                        gm_id = gm_entry[0]
+                        nameRef[str(gm_id)] = "DM"
+                    
+                    await cursor.execute(
+                        "SELECT player_id, character_name FROM players WHERE campaign_id = ?",
+                        (campaign_id,)
+                    )
+                    player_entries = await cursor.fetchall()
+                    for player_id, character_name in player_entries:
+                        nameRef[str(player_id)] = character_name
+                except Exception as e:
+                    print(f"Query for DM/player data failed: {e}")
+                    return
+    print("Retrieved DM/Player data:",nameRef)
     for user_id, user_transcripts in session_transcripts.items():
         for session_segments in user_transcripts:
             for segment in session_segments:
                 segment_with_user = {
-                    'user_id': user_id,
+                    'name': nameRef.get(str(user_id), str(user_id)),
                     'start_seconds': segment['start_seconds'],
                     'end_seconds': segment['end_seconds'],
                     'text': segment['text']
@@ -309,7 +336,7 @@ async def combine_transcripts(session=None, guild_id=None, campaign_id=None, ses
         await output_file.write(json_string)
     async with aiofiles.open(f'notes/{guild_id}_{campaign_id}_{session_number}_transcript.txt', 'w') as file:
         for segment in all_segments_sorted:
-            line = f"{segment['user_id']} - {segment['start_seconds']}:{segment['text']}\n"
+            line = f"{segment['name']} - {segment['start_seconds']}:{segment['text']}\n"
             await file.write(line)
 
 async def setup(bot: commands.Bot) -> None:

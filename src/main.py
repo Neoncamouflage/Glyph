@@ -88,6 +88,10 @@ async def sync(ctx: commands.Context, guilds: commands.Greedy[discord.Object], s
 @commands.is_owner()
 async def getSessions(ctx):
     response = ''
+    if len(bot.sessions.items()) == 0:
+        await ctx.send("No sessions!")
+        return
+    
     for guild_id, session in bot.sessions.items():
         response+=f"Guild ID: {guild_id}, Session: {session}\n"
         for attr in dir(session):
@@ -97,6 +101,48 @@ async def getSessions(ctx):
     await ctx.send(response)
 
 @bot.command()
+@commands.is_owner()
+async def deleteCampaign(ctx, *, campaign_input: str):
+    async with bot.db.acquire() as conn:
+        async with conn.cursor() as cursor:
+            try:
+                await conn.execute('BEGIN')
+                
+                if campaign_input.isdigit():
+                    campaign_id = int(campaign_input)
+                else:
+                    await cursor.execute(
+                        "SELECT campaign_id FROM campaigns WHERE campaign_name = ?",
+                        (campaign_input,)
+                    )
+                    result = await cursor.fetchone()
+                    
+                    if result is None:
+                        await ctx.send(f"Campaign '{campaign_input}' not found. Campaign ID or exact name required")
+                        await conn.rollback()
+                        return
+                    
+                    campaign_id = result[0]
+                
+                await cursor.execute(
+                    "DELETE FROM players WHERE campaign_id = ?",
+                    (campaign_id,)
+                )
+                
+                await cursor.execute(
+                    "DELETE FROM campaigns WHERE campaign_id = ?",
+                    (campaign_id,)
+                )
+                
+                await conn.commit()
+                await ctx.send(f"Campaign {campaign_id} and associated players deleted successfully.")
+            
+            except Exception as e:
+                await conn.rollback()
+                await ctx.send(f"An error occurred: {e}")
+
+@bot.command()
+@commands.is_owner()
 async def reload(ctx):
     reloads = ''
     for cog in os.listdir(".\\cogs"):

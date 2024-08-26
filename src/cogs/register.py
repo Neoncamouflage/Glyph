@@ -23,10 +23,10 @@ class Register(commands.GroupCog, name="register"):
                         (campaign_name, interaction.user.id)
                     )
                     await conn.commit()
-                    await interaction.response.send_message(f"Campaign '{campaign_name}' registered successfully!", ephemeral=True)
+                    await interaction.response.send_message(f"Campaign '{campaign_name}' registered successfully!")
                 except Exception as e:
                     await conn.rollback()
-                    await interaction.response.send_message(f"Failed to register campaign: {str(e)}", ephemeral=True)
+                    await interaction.response.send_message(f"Failed to register campaign: {str(e)}")
 
     @app_commands.command(name="character", description="Tells Glyph to register a new character for a campaign and assign it to you.")
     async def character(self, interaction: discord.Interaction, campaign_name: str, character_name: str) -> None:
@@ -42,7 +42,7 @@ class Register(commands.GroupCog, name="register"):
                     await cursor.execute("SELECT campaign_id FROM campaigns WHERE campaign_name = ?", (campaign_name,))
                     campaign_id = await cursor.fetchone()
                     if not campaign_id:
-                        await interaction.response.send_message(f"Campaign '{campaign_name}' not found.", ephemeral=True)
+                        await interaction.response.send_message(f"Campaign '{campaign_name}' not found.")
                         return
                     
                     campaign_id = campaign_id[0]
@@ -52,10 +52,10 @@ class Register(commands.GroupCog, name="register"):
                         (campaign_id, character_name)
                     )
                     await conn.commit()
-                    await interaction.response.send_message(f"Character '{character_name}' registered successfully under campaign '{campaign_name}'!", ephemeral=True)
+                    await interaction.response.send_message(f"Character '{character_name}' registered successfully under campaign '{campaign_name}'!")
                 except Exception as e:
                     await conn.rollback()
-                    await interaction.response.send_message(f"Failed to register character: {str(e)}", ephemeral=True)
+                    await interaction.response.send_message(f"Failed to register character: {str(e)}")
 
     @character.autocomplete('campaign_name')
     async def autocomplete_campaign_name(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice]:
@@ -71,7 +71,7 @@ class Register(commands.GroupCog, name="register"):
                         for campaign in campaigns if current.lower() in campaign[0].lower()
                     ][:25]
                 except Exception as e:
-                    await interaction.response.send_message(f"Failed to register character: {str(e)}", ephemeral=True)
+                    await interaction.response.send_message(f"Failed to register character: {str(e)}")
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Register(bot))

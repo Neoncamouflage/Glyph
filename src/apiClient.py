@@ -50,6 +50,7 @@ async def generate_notes(session=None, guild_id=None, campaign_id=None, session_
 
         async with aiofiles.open(f'notes/{guild_id}_{campaign_id}_{session_number}_summary.txt', 'w') as file:
             await file.write(notes)
+        return notes
 
 
     except Exception as e:
