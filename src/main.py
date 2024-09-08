@@ -2,6 +2,7 @@ from typing import Literal, Optional
 import discord
 import json
 import os
+import datetime
 import asqlite
 import asyncio
 from discord import app_commands
@@ -157,6 +158,13 @@ async def reload(ctx):
                 raise e
     await ctx.send(reloads+'Cogs reloaded')
 
+@bot.command()
+async def status(ctx):
+    status = ''
+    cogs += 'Cogs:\n'+'\n'.join(os.listdir(".\\cogs"))
+
+    await ctx.send(status)
+
 async def load_extensions():
     for filename in os.listdir(".\\cogs"):
         if filename.endswith(".py"):
@@ -171,6 +179,7 @@ async def main():
         await setup_database()
         await load_extensions()
         await bot.start(config['discord_key'])
+        bot.start_time = datetime.datetime.now()
         print("Glyph is awake")
 
 asyncio.run(main())
